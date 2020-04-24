@@ -12,7 +12,7 @@ here = os.path.dirname(os.path.realpath(__file__))
 class SlackLogHandler(logging.Handler):
     @functools.cached_property
     def client(self):
-        return slack.WebClient(token=WEB_TOKEN)
+        return slack.WebClient(token=secret_loader.web_token)
 
     def wrap_in_fences(self, txt):
         return f'```\n{txt}\n```'
@@ -36,16 +36,25 @@ logger.addHandler(_log_handler)
 logger.setLevel(level=logging.INFO)
 
 
-def read_token(token_type):
-    default_path = os.path.join(here, f'secrets/{token_type}-token')
-    env_key = f'{token_type.upper()}_TOKEN_PATH'
-    path = os.environ.get(env_key, default_path)
-    logger.info('reading %s token from %s', token_type, path)
-    with open(path, 'r') as f:
-        return f.read().strip()
+class SecretLoader:
+    def read_token(self, token_type):
+        default_path = os.path.join(here, f'secrets/{token_type}-token')
+        env_key = f'{token_type.upper()}_TOKEN_PATH'
+        path = os.environ.get(env_key, default_path)
+        logger.info('reading %s token from %s', token_type, path)
+        with open(path, 'r') as f:
+            return f.read().strip()
+
+    @functools.cached_property
+    def rtm_token(self):
+        return self.read_token('rtm')
+
+    @functools.cached_property
+    def web_token(self):
+        return self.read_token('web')
 
 
-RTM_TOKEN, WEB_TOKEN = read_token('rtm'), read_token('web')
+secret_loader = SecretLoader()
 
 
 @slack.RTMClient.run_on(event='message')
@@ -67,7 +76,7 @@ def main():
     logger.addHandler(handler)
 
     logger.info('opening RTM session')
-    client = slack.RTMClient(token=RTM_TOKEN)
+    client = slack.RTMClient(token=secret_loader.rtm_token)
     client.start()
 
 
