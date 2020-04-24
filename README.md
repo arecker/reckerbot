@@ -1,7 +1,7 @@
 # reckerbot
 
-![](images/avatar.png)
+![](images/banner.png)
 
 The Greatest Slackbot Ever Made
 
-![](images/banner.png)
+
