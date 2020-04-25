@@ -1,4 +1,4 @@
-.PHONY: seed test
+.PHONY: run seed test
 
 seed:
 	scripts/seed.sh
