@@ -292,12 +292,15 @@ def on_message(**payload):
 
         command, args = message.as_command()
 
-        # try:
-        logger.info('routing "%s %s" to groceries', command, args)
-        message.reply(handlers[command].handle(args=args))
-        # except KeyError:
-        #     logger.info('falling back to default for "%s"', message.truncate())
-        #     message.reply(handlers['default'].handle())
+        try:
+            handler = handlers[command]
+        except KeyError:
+            logger.info('falling back to default for "%s"', message.truncate())
+            message.reply(handlers['default'].handle())
+            return
+
+        logger.info('routing "%s %s" to handler', command, args)
+        message.reply(handler.handle(args=args))
 
     except Exception as e:
         logger.error(e, exc_info=True)
