@@ -17,6 +17,27 @@ def wrap_in_fences(txt):
     return f'```\n{txt}\n```'
 
 
+ParsedArgs = collections.namedtuple(
+    'ParsedArgs',
+    'command subcommand args'
+)
+
+
+def parse_args(message):
+    words = [w.strip() for w in message.split(' ') if w]
+    p_username = re.compile('^<@*.+>$')
+    p_emoji = re.compile('^:[A-Za-z_-]+:$')
+    words = [w for w in words if not p_username.match(w)]
+    words = [w for w in words if not p_emoji.match(w)]
+    command = words.pop(0)
+    try:
+        subcommand = words.pop(0)
+    except IndexError:
+        subcommand = None
+    args = [w.strip() for w in ' '.join(words).split(',') if w]
+    return ParsedArgs(command, subcommand, args)
+
+
 class SlackLogHandler(logging.Handler):
     def __init__(self, *args, token='', **kwargs):
         self.token = token
@@ -163,16 +184,6 @@ class Message:
         else:
             return self.text
 
-    def as_command(self):
-        words = self.text.split(' ')
-        words = [w.strip() for w in self.text.split(' ') if w]
-        p_username = re.compile('^<@*.+>$')
-        p_emoji = re.compile('^:[A-Za-z_-]+:$')
-        words = [w for w in words if not p_username.match(w)]
-        words = [w for w in words if not p_emoji.match(w)]
-        words = [w.lower() for w in words]
-        return words[0], words[1:]
-
     @property
     def post_args(self):
         return {
@@ -194,11 +205,6 @@ class Message:
 class Module:
     aliases = []
     default = 'help'
-
-    ParsedArgs = collections.namedtuple(
-        'ParsedArgs',
-        'command subcommand args'
-    )
 
     @property
     def command(self):
@@ -224,17 +230,6 @@ class Module:
     def _read_doc_string(self, method):
         return getattr(self, method).__doc__.strip()
 
-    def parse_args(self, cmd):
-        tokens = [c.strip() for c in cmd.split(' ') if c]
-        command = tokens.pop(0)
-        try:
-            subcommand = tokens.pop(0)
-            args = [t.strip() for t in ' '.join(tokens).split(',')]
-        except IndexError:
-            subcommand = self.default
-            args = []
-        return self.ParsedArgs(command, subcommand, args)
-
     def cmd_help(self, args=[], msg='Here are the available commands:'):
         '''
         Print these instructions.
@@ -248,17 +243,17 @@ class Module:
     def subcommand_function(self, name):
         return getattr(self, f'cmd_{name}')
 
-    def matches(self, cmd):
-        return cmd in self.matching_commands
+    def matches(self, args):
+        return args.command in self.matching_commands
 
-    def handle(self, cmd):
-        args = self.parse_args(cmd)
+    def handle(self, args):
+        subcommand = args.subcommand or self.default
 
-        if args.subcommand not in self.subcommands:
-            msg = f'Not sure what "{args.subcommand}" means!'
+        if subcommand not in self.subcommands:
+            msg = f'Not sure what "{subcommand}" means!'
             return self.cmd_help(msg=msg)
 
-        return self.subcommand_function(args.subcommand)(args=args.args)
+        return self.subcommand_function(subcommand)(args=args.args)
 
 
 class GroceriesModule(Module):
@@ -364,11 +359,11 @@ def on_message(**payload):
             logger.info('ignoring message not for reckerbot "%s"', message.truncate())
             return
 
-        command, args = message.as_command()
-        logger.info('parsed "%s" to %s %s', message.truncate(), command, args)
+        args = parse_args(message.text)
+        logger.info('parsed "%s" to %s', message.truncate(), args)
 
-        module = next((m for m in modules if m.matches(command)))
-        output = module.handle(command + ' ' + ' '.join(args))
+        module = next((m for m in modules if m.matches(args)))
+        output = module.handle(args)
         message.reply(output)
     except Exception as e:
         logger.error(e, exc_info=True)
@@ -389,12 +384,13 @@ def serve():
 
 
 def main():
-    cmd, subcommand = sys.argv[1], ' '.join(sys.argv[2:])
-    if cmd == 'serve':
+    args = parse_args(' '.join(sys.argv[1:]))
+
+    if args.command == 'serve':
         serve()
     else:
-        module = next((m for m in modules if m.matches(cmd)))
-        print(module.handle(cmd + ' ' + subcommand))
+        module = next((m for m in modules if m.matches(args)))
+        print(module.handle(args))
 
 
 if __name__ == '__main__':

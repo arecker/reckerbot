@@ -43,17 +43,6 @@ help - Print these instructions.
         '''.strip()
         self.assertEqual(self.m.cmd_help(), expected)
 
-    def test_parse_args(self):
-        actual = self.m.parse_args('hello greet Alex, Marissa, Rodney')
-        self.assertEqual(actual.command, 'hello')
-        self.assertEqual(actual.subcommand, 'greet')
-        self.assertEqual(actual.args, ['Alex', 'Marissa', 'Rodney'])
-
-        actual = self.m.parse_args('hello')
-        self.assertEqual(actual.command, 'hello')
-        self.assertEqual(actual.subcommand, 'help')
-        self.assertEqual(actual.args, [])
-
 
 if __name__ == '__main__':
     unittest.main()
