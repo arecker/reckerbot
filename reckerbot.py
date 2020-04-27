@@ -224,7 +224,10 @@ class GroceriesHandler:
         with open(self.save_target, 'r') as f:
             body = self.to_grocery_list(json.load(f))
 
-        return f'Here is the current grocery list!\n{body}'
+        if body:
+            return f'Here is the current grocery list!\n{body}'
+        else:
+            return 'The grocery list is currently empty!'
 
     def add(self, items=[]):
         new = [i.lower().strip() for i in items]
@@ -246,7 +249,9 @@ class GroceriesHandler:
         return f'normally I would delete {items}, but I cannot do that yet!'
 
     def clear(self):
-        return 'normamly I would clear the grocery list, but I cannot do that yet!'
+        with open(self.save_target, 'w') as f:
+            json.dump([], f)
+        return 'grocery list cleared!'
 
     def handle(self, args=[]):
         try:
