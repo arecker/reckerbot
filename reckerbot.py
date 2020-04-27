@@ -1,6 +1,5 @@
-import argparse
+import collections
 import functools
-import getpass
 import json
 import logging
 import os
@@ -192,22 +191,81 @@ class Message:
         return f'<Message "{self.truncate()}">'
 
 
-class DefaultHandler:
-    replies = [
-        '''Hey {user}!  I saw you mentioned me, but I'm not sure what I'm supposed to do? :thinking_face:''',
-        '''{user} - you rang?''',
-        '''And what I'm I supposed to do now, {user}?''',
-        '''Hi {user}.  I don't know what you want, so I'll just assume you want attention.''',
-        '''{user}? ¯\_(ツ)_/¯''',
-        '''What can I do for you, {user}?''',
-    ]
+class Module:
+    aliases = []
+    default = 'help'
 
-    def handle(self, *args, **kwargs):
-        return random.choice(self.replies)
+    ParsedArgs = collections.namedtuple(
+        'ParsedArgs',
+        'command subcommand args'
+    )
+
+    @property
+    def command(self):
+        name = type(self).__name__
+        return re.sub('Module$', '', name).lower()
+
+    @property
+    def shortcut(self):
+        return self.command[0]
+
+    @property
+    def matching_commands(self):
+        return [self.shortcut, self.command] + self.aliases
+
+    @property
+    def subcommands(self):
+        attrs = [a for a in dir(self) if a.startswith('cmd_')]
+        methods = [m for m in attrs if hasattr(getattr(self, m), '__call__')]
+        subcmds = [m[4:] for m in methods]
+        subcmds.remove('help')
+        return subcmds + ['help']
+
+    def _read_doc_string(self, method):
+        return getattr(self, method).__doc__.strip()
+
+    def parse_args(self, cmd):
+        tokens = [c.strip() for c in cmd.split(' ') if c]
+        command = tokens.pop(0)
+        try:
+            subcommand = tokens.pop(0)
+            args = [t.strip() for t in ' '.join(tokens).split(',')]
+        except IndexError:
+            subcommand = self.default
+            args = []
+        return self.ParsedArgs(command, subcommand, args)
+
+    def cmd_help(self, args=[], msg='Here are the available commands:'):
+        '''
+        Print these instructions.
+        '''
+        for cmd in self.subcommands:
+            doc = self._read_doc_string(f'cmd_{cmd}')
+            msg += f'\n{cmd} - {doc}'
+
+        return msg.strip()
+
+    def subcommand_function(self, name):
+        return getattr(self, f'cmd_{name}')
+
+    def matches(self, cmd):
+        return cmd in self.matching_commands
+
+    def handle(self, cmd):
+        args = self.parse_args(cmd)
+
+        if args.subcommand not in self.subcommands:
+            msg = f'Not sure what "{args.subcommand}" means!'
+            return self.cmd_help(msg=msg)
+
+        return self.subcommand_function(args.subcommand)(args=args.args)
 
 
-class GroceriesHandler:
-    subcommands = ['add', 'list', 'clear', 'delete', 'help']
+class GroceriesModule(Module):
+    '''
+    View and modify the grocery list.
+    '''
+    default = 'list'
 
     @property
     def save_target(self):
@@ -216,11 +274,10 @@ class GroceriesHandler:
     def to_grocery_list(self, array):
         return ''.join(['- ' + item + '\n' for item in array])
 
-    def help(self):
-        body = wrap_in_fences(self.parser.format_help())
-        return f'I didn\'t understand the command :confused:\n{body}'.strip()
-
-    def list(self):
+    def cmd_list(self, args=[]):
+        '''
+        List the current items in the grocery list.
+        '''
         with open(self.save_target, 'r') as f:
             body = self.to_grocery_list(json.load(f))
 
@@ -229,8 +286,11 @@ class GroceriesHandler:
         else:
             return 'The grocery list is currently empty!'
 
-    def add(self, items=[]):
-        new = [i.lower().strip() for i in items]
+    def cmd_add(self, args=[]):
+        '''
+        Add `{args}` to the grocery list, if they're not already there.
+        '''
+        new = [i.lower().strip() for i in args]
         with open(self.save_target, 'r') as f:
             existing = json.load(f)
 
@@ -245,58 +305,50 @@ class GroceriesHandler:
 
         return f'added {these} to groceries'
 
-    def delete(self, items=[]):
-        return f'normally I would delete {items}, but I cannot do that yet!'
+    def cmd_delete(self, args=[]):
+        '''
+        Delete `{args}` from the grocery list, if they're listed.
+        '''
+        return f'normally I would delete {args}, but I cannot do that yet!'
 
-    def clear(self):
+    def cmd_clear(self, args=[]):
+        '''
+        Delete everything on the grocery list.
+        '''
         with open(self.save_target, 'w') as f:
             json.dump([], f)
         return 'grocery list cleared!'
 
-    def handle(self, args=[]):
-        try:
-            args = self.parse_args(args)
-            if args.action == 'list':
-                return self.list()
-            elif args.action == 'add':
-                return self.add(items=args.items)
-            elif args.action == 'delete':
-                return self.delete(items=args.items)
-            elif args.action == 'clear':
-                return self.clear()
-            else:
-                return self.help()
-        except SystemExit:
-            return self.help()
 
-    @functools.cached_property
-    def parser(self):
-        parser = argparse.ArgumentParser(
-            prog='groceries',
-            description='manage the grocery list'
-        )
-        parser.add_argument(
-            'action', default='list',
-            choices=self.subcommands,
-            nargs='?', const=1, type=str
-        )
-        parser.add_argument(
-            'items', nargs='*',
-        )
-        return parser
+class DefaultModule(Module):
+    '''
+    Garner some mild shame from reckerbot for typing a nonexistent command.
+    '''
+    default = 'random'
 
-    def parse_args(self, args):
-        return self.parser.parse_args(args)
+    replies = [
+        '''Hey {user}!  I saw you mentioned me, but I'm not sure what I'm supposed to do? :thinking_face:''',
+        '''{user} - you rang?''',
+        '''And what I'm I supposed to do now, {user}?''',
+        '''Hi {user}.  I don't know what you want, so I'll just assume you want attention.''',
+        '''{user}? ¯\_(ツ)_/¯''',
+        '''What can I do for you, {user}?''',
+    ]
+
+    def matches(self, cmd):
+        return True
+
+    def cmd_random(self, args=[]):
+        '''
+        Hear a random phrase which communicates how lost you are.
+        '''
+        return random.choice(self.replies)
 
 
-shortcuts = {
-    'g': 'groceries',
-}
-
-handlers = {
-    'default': DefaultHandler(),
-    'groceries': GroceriesHandler()
-}
+modules = [
+    GroceriesModule(),
+    DefaultModule(),
+]
 
 
 @slack.RTMClient.run_on(event='message')
@@ -313,27 +365,13 @@ def on_message(**payload):
             return
 
         command, args = message.as_command()
-        command = shortcuts.get(command, command)
+        logger.info('parsed "%s" to %s %s', message.truncate(), command, args)
 
-        try:
-            handler = handlers[command]
-        except KeyError:
-            logger.info('falling back to default for "%s"', message.truncate())
-            message.reply(handlers['default'].handle())
-            return
-
-        logger.info('routing "%s %s" to handler', command, args)
-        message.reply(handler.handle(args=args))
-
+        module = next((m for m in modules if m.matches(command)))
+        output = module.handle(command + ' ' + ' '.join(args))
+        message.reply(output)
     except Exception as e:
         logger.error(e, exc_info=True)
-
-
-def parse_root_args():
-    parser = argparse.ArgumentParser(prog='reckerbot', description='the greatest slackbot ever made')
-    parser.add_argument('action', choices=list(handlers.keys()) + ['serve'])
-    parser.add_argument('args', nargs='*')
-    return parser.parse_args()
 
 
 def serve():
@@ -351,13 +389,12 @@ def serve():
 
 
 def main():
-    args = parse_root_args()
-    if args.action == 'serve':
+    cmd, subcommand = sys.argv[1], ' '.join(sys.argv[2:])
+    if cmd == 'serve':
         serve()
     else:
-        output = handlers[args.action].handle(args=args.args)
-        output = output.replace('{user}', getpass.getuser()).strip()
-        print(output)
+        module = next((m for m in modules if m.matches(cmd)))
+        print(module.handle(cmd + ' ' + subcommand))
 
 
 if __name__ == '__main__':
