@@ -227,7 +227,20 @@ class GroceriesHandler:
         return f'Here is the current grocery list!\n{body}'
 
     def add(self, items=[]):
-        return f'normally I would add {items}, but I cannot do that yet!'
+        new = [i.lower().strip() for i in items]
+        with open(self.save_target, 'r') as f:
+            existing = json.load(f)
+
+        these = [i for i in new if i not in existing]
+
+        if not these:
+            return 'all of that is covered - nothing to add!'
+
+        logger.info('adding %s to groceries', these)
+        with open(self.save_target, 'w') as f:
+            json.dump(existing + these, f)
+
+        return f'added {these} to groceries'
 
     def delete(self, items=[]):
         return f'normally I would delete {items}, but I cannot do that yet!'
