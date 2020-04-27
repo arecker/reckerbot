@@ -96,25 +96,40 @@ class TokenLoader:
 token_loader = TokenLoader()
 
 
+class UserLookup:
+    @functools.cached_property
+    def client(self):
+        return slack.WebClient(token=token_loader.web_token)
+
+    @functools.cached_property
+    def members(self):
+        logger.info('fetching member info')
+        return self.client.users_list().data['members']
+
+    @property
+    def active_members(self):
+        yield from filter(lambda m: not m['deleted'], self.members)
+
+    def id_by_name(self, name):
+        try:
+            return next((m['id'] for m in self.active_members if m['name'] == name))
+        except StopIteration:
+            raise ValueError(f'no user with name "{name}"')
+
+    def name_by_id(self, id):
+        try:
+            return next((m['name'] for m in self.active_members if m['id'] == id))
+        except StopIteration:
+            raise ValueError(f'no user with id "{id}"')
+
+
+user_lookup = UserLookup()
+
+
 class User:
     def __init__(self, name=None, id=None):
         self._id = id
         self._name = name
-
-    def as_member_filter(self):
-        filters = {}
-
-        if self._id:
-            filters['id'] = self._id
-        if self._name:
-            filters['name'] = self._name
-
-        if not filters:
-            raise ValueError('cannot identify user without a name or id')
-
-        filters['deleted'] = False
-
-        return filters
 
     def as_mention(self):
         return f'<@{self.id}>'
@@ -123,26 +138,16 @@ class User:
     def client(self):
         return slack.WebClient(token=token_loader.web_token)
 
-    @functools.cached_property
-    def identity(self):
-        filters = self.as_member_filter()
-        logger.info('fetching identity for user %s', filters)
-        members = self.client.users_list().data['members']
-        try:
-            return next(filter(lambda m: filters.items() <= m.items(), members))
-        except StopIteration:
-            raise ValueError(f'could not find user that satisfies: {filters}')
-
     @property
     def name(self):
         if not self._name:
-            self._name = self.identity['name']
+            self._name = user_lookup.name_by_id(self._id)
         return self._name
 
     @property
     def id(self):
         if not self._id:
-            self._id = self.identity['id']
+            self._id = user_lookup.id_by_name(self._name)
         return self._id
 
     def __eq__(self, other):
@@ -156,6 +161,7 @@ reckerbot = User(name='reckerbot')
 
 
 class Message:
+    # https://api.slack.com/events/message
     def __init__(self, response):
         self.web_client = response.get('web_client')
         self.rtm_client = response.get('rtm_client')
