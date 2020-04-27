@@ -284,6 +284,10 @@ class GroceriesHandler:
         return self.parser.parse_args(args)
 
 
+shortcuts = {
+    'g': 'groceries',
+}
+
 handlers = {
     'default': DefaultHandler(),
     'groceries': GroceriesHandler()
@@ -304,6 +308,7 @@ def on_message(**payload):
             return
 
         command, args = message.as_command()
+        command = shortcuts.get(command, command)
 
         try:
             handler = handlers[command]
