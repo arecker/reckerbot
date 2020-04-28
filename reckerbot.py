@@ -339,7 +339,15 @@ class GroceriesModule(Module):
         '''
         Delete `{args}` from the grocery list, if they're listed.
         '''
-        return f'normally I would delete {args}, but I cannot do that yet!'
+        with open(self.save_target, 'r') as f:
+            items = json.load(f)
+
+        deleted = [items.pop(items.index(i)) for i in args if i in items]
+
+        with open(self.save_target, 'w') as f:
+            json.dump(items, f)
+
+        return f'Done!  Deleted {deleted}'
 
     def cmd_clear(self, args=[]):
         '''
