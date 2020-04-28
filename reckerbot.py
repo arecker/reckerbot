@@ -162,10 +162,9 @@ reckerbot = User(name='reckerbot')
 
 class Message:
     # https://api.slack.com/events/message
-    def __init__(self, response):
-        self.web_client = response.get('web_client')
-        self.rtm_client = response.get('rtm_client')
-        self.data = response['data']
+
+    def __init__(self, data):
+        self.data = data
 
     @functools.cached_property
     def user(self):
@@ -178,8 +177,21 @@ class Message:
     def text(self):
         return self.data['text']
 
+    @property
+    def subtype(self):
+        return self.data.get('subtype')
+
+    def is_from_slackbot(self):
+        return self.data.get('user') == 'USLACKBOT'
+
     def is_from_bot(self):
-        return self.data.get('subtype') == 'bot_message'
+        return self.subtype == 'bot_message'
+
+    def is_channel_join(self):
+        return self.subtype == 'channel_join'
+
+    def is_direct_message(self):
+        return self.data['channel'].startswith('D')
 
     def mentions_reckerbot(self):
         return reckerbot.as_mention() in self.text
@@ -256,7 +268,7 @@ class Module:
         subcommand = args.subcommand or self.default
 
         if subcommand not in self.subcommands:
-            msg = f'Not sure what "{subcommand}" means!'
+            msg = f'Not sure what "{args.command} {subcommand}" means!'
             return self.cmd_help(msg=msg)
 
         return self.subcommand_function(subcommand)(args=args.args)
@@ -352,25 +364,32 @@ modules = [
 ]
 
 
+def find_module(args):
+    return next((m for m in modules if m.matches(args)))
+
+
 @slack.RTMClient.run_on(event='message')
 def on_message(**payload):
-    message = Message(response=payload)
+    message = Message(data=payload['data'])
 
     try:
-        if message.is_from_bot():
-            logger.info('ignoring message from bot "%s"', message.truncate())
+        if message.is_channel_join():
+            logger.info('message %s is just a channel join, ignoring', message)
             return
 
-        if not message.mentions_reckerbot():
-            logger.info('ignoring message not for reckerbot "%s"', message.truncate())
+        if message.is_from_bot() or message.is_from_slackbot():
+            logger.info('ignoring message from bot "%s"', message)
+            return
+
+        if not (message.is_direct_message() or message.mentions_reckerbot()):
+            logger.info('ignoring message not for reckerbot "%s"', message)
             return
 
         args = parse_args(message.text)
-        logger.info('parsed "%s" to %s', message.truncate(), args)
-
-        module = next((m for m in modules if m.matches(args)))
-        output = module.handle(args)
-        message.reply(output)
+        logger.info('parsed "%s" to %s', message, args)
+        module = find_module(args)
+        logger.info('routing %s to %s', args, module)
+        message.reply(module.handle(args))
     except Exception as e:
         logger.error(e, exc_info=True)
 
@@ -395,7 +414,7 @@ def main():
     if args.command == 'serve':
         serve()
     else:
-        module = next((m for m in modules if m.matches(args)))
+        module = find_module(args)
         print(module.handle(args))
 
 
