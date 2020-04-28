@@ -1,3 +1,9 @@
+'''
+reckerbot, the greatest slackbot ever made
+'''
+
+__version__ = '0.0.0'
+
 import collections
 import functools
 import json
