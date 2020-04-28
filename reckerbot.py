@@ -224,6 +224,13 @@ class Module:
     aliases = []
     default = 'help'
 
+    # If a list of usernames, limit this module to these users.
+    allowed_user_names = []
+
+    @functools.cached_property
+    def allowed_users(self):
+        return [User(name=u) for u in self.allowed_user_names]
+
     @property
     def command(self):
         name = type(self).__name__
@@ -264,7 +271,16 @@ class Module:
     def matches(self, args):
         return args.command in self.matching_commands
 
-    def handle(self, args):
+    def is_allowed(self, user=None):
+        if not self.allowed_user_names:
+            return True
+
+        return user in self.allowed_users
+
+    def handle(self, args, user=None):
+        if user and not self.is_allowed(user):
+            return f'I am sorry!  You are not allowed to run the "{self.command}" commmand!'
+
         subcommand = args.subcommand or self.default
 
         if subcommand not in self.subcommands:
@@ -279,6 +295,7 @@ class GroceriesModule(Module):
     View and modify the grocery list.
     '''
     default = 'list'
+    allowed_user_names = ['alex', 'marissa']  # TODO: lol hard code
 
     @property
     def save_target(self):
@@ -389,7 +406,7 @@ def on_message(**payload):
         logger.info('parsed "%s" to %s', message, args)
         module = find_module(args)
         logger.info('routing %s to %s', args, module)
-        message.reply(module.handle(args))
+        message.reply(module.handle(args, user=message.user))
     except Exception as e:
         logger.error(e, exc_info=True)
 
