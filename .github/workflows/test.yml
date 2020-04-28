@@ -1,7 +1,9 @@
-name: master
+name: test
 
 on:
   push:
+    branches: [ master ]
+  pull_request:
     branches: [ master ]
 
 jobs:
@@ -18,26 +20,15 @@ jobs:
       uses: actions/setup-python@v1
       with:
         python-version: ${{ matrix.python-version }}
-
     - name: install-deps
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-
     - name: lint
       run: |
         pip install flake8
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-
     - name: test
       run: |
         make test
-
-    - name: publish
-      uses: HurricanKai/Publish-Docker-Github-Action@master
-      with:
-        name: arecker/reckerbot
-        username: ${{ secrets.DOCKER_USERNAME }}
-        password: ${{ secrets.DOCKER_PASSWORD }}
-        tagging: true
