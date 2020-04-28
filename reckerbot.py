@@ -320,7 +320,7 @@ class GroceriesModule(Module):
         '''
         Add `{args}` to the grocery list, if they're not already there.
         '''
-        new = [i.lower().strip() for i in args]
+        new = list(set([i.lower().strip() for i in args]))
         with open(self.save_target, 'r') as f:
             existing = json.load(f)
 
