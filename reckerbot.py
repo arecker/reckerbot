@@ -9,6 +9,7 @@ import functools
 import json
 import logging
 import os
+import platform
 import random
 import re
 import sys
@@ -426,7 +427,10 @@ def on_message(**payload):
 
 
 def serve():
-    logger.info('starting reckerbot')
+    logger.info(
+        'starting reckerbot v%s, Python %s',
+        __version__, platform.python_version()
+    )
 
     logger.info('adding slack logging handler')
     handler = SlackLogHandler(token=token_loader.web_token)
