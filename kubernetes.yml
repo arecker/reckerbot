@@ -1,0 +1,46 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: reckerbot
+  labels:
+    name: reckerbot
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: reckerbot
+  namespace: reckerbot
+  labels:
+    name: reckerbot
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: reckerbot
+  template:
+    metadata:
+      labels:
+        name: reckerbot
+    spec:
+      volumes:
+      - name: data
+        nfs:
+          server: archive.local
+          path: /mnt/scratch/farm/reckerbot
+      - name: secrets
+        emptyDir:
+          medium: Memory
+      securityContext:
+        runAsGroup: 1001
+        runAsUser: 1001
+      containers:
+      - name: reckerbot
+        image: arecker/reckerbot:0.3.0-armv7l
+        imagePullPolicy: IfNotPresent
+        volumeMounts:
+        - name: data
+          mountPath: /usr/src/app/data
+        - name: secrets
+          mountPath: /usr/src/app/secrets
+          readOnly: true
