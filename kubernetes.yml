@@ -34,6 +34,21 @@ spec:
       securityContext:
         runAsGroup: 1001
         runAsUser: 1001
+      initContainers:
+      - name: secretboi
+        image: arecker/secretboi:latest
+        env:
+        - name: VAULT_ADDR
+          value: http://vault.local
+        - name: VAULT_ROLE
+          value: reckerbot
+        - name: SECRET_RECKERBOT
+          value: /reckerbot
+        - name: ONLY_RUN_ONCE
+          value: "true"
+        volumeMounts:
+        - name: secrets
+          mountPath: /secrets
       containers:
       - name: reckerbot
         image: arecker/reckerbot:0.3.0-armv7l
