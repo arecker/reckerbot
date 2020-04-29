@@ -48,17 +48,17 @@ spec:
           value: "true"
         - name: RECURSE_SECRETS
           value: "true"
-      volumeMounts:
-      - name: secrets
-        mountPath: /secrets
+        volumeMounts:
+        - name: secrets
+          mountPath: /secrets
       containers:
       - name: reckerbot
         image: arecker/reckerbot:0.4.0-armv7l
         imagePullPolicy: IfNotPresent
         env:
-        - name: RTM_TOKEN_PATH:
+        - name: RTM_TOKEN_PATH
           value: /usr/src/app/secrets/reckerbot/rtm-token
-        - name: WEB_TOKEN_PATH:
+        - name: WEB_TOKEN_PATH
           value: /usr/src/app/secrets/reckerbot/web-token
         volumeMounts:
         - name: data
