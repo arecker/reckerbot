@@ -46,6 +46,8 @@ spec:
           value: /reckerbot
         - name: ONLY_RUN_ONCE
           value: "true"
+        - name: RECURSE_SECRETS
+          value: "true"
         volumeMounts:
         - name: secrets
           mountPath: /secrets
@@ -53,6 +55,11 @@ spec:
       - name: reckerbot
         image: arecker/reckerbot:0.3.0-armv7l
         imagePullPolicy: IfNotPresent
+        env:
+        - name: RTM_TOKEN_PATH:
+          value: /usr/src/app/secrets/reckerbot/rtm-token
+        - name: WEB_TOKEN_PATH:
+          value: /usr/src/app/secrets/reckerbot/web-token
         volumeMounts:
         - name: data
           mountPath: /usr/src/app/data
