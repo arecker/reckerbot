@@ -56,11 +56,9 @@ spec:
           value: http://vault.local
         - name: VAULT_ROLE
           value: reckerbot
-        - name: SECRET_RECKERBOT
+        - name: SECRET_reckerbot
           value: /reckerbot
         - name: ONLY_RUN_ONCE
-          value: "true"
-        - name: RECURSE_SECRETS
           value: "true"
         volumeMounts:
         - name: secrets
@@ -69,11 +67,6 @@ spec:
       - name: reckerbot
         image: arecker/reckerbot:0.4.0-armv7l
         imagePullPolicy: IfNotPresent
-        env:
-        - name: RTM_TOKEN_PATH
-          value: /usr/src/app/secrets/RECKERBOT/rtm-token
-        - name: WEB_TOKEN_PATH
-          value: /usr/src/app/secrets/RECKERBOT/web-token
         volumeMounts:
         - name: data
           mountPath: /usr/src/app/data

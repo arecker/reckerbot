@@ -77,27 +77,21 @@ class TokenLoader:
     def __init__(self, secrets_dir=os.path.join(here, 'secrets')):
         self.secrets_dir = secrets_dir
 
-    def read_token(self, token_type):
-        default_path = self.to_token_path(token_type)
-        env_key = self.to_env_key(token_type)
-        path = os.environ.get(env_key, default_path)
-        logger.info('reading %s token from %s', token_type, path)
-        with open(path, 'r') as f:
-            return f.read().strip()
-
-    def to_env_key(self, token_type):
-        return f'{token_type.upper()}_TOKEN_PATH'
-
-    def to_token_path(self, token_type):
-        return os.path.join(self.secrets_dir, f'{token_type}-token')
-
     @functools.cached_property
+    def data(self):
+        default_path = os.path.join(self.secrets_dir, 'reckerbot.json')
+        path = os.environ.get('TOKEN_PATH', default_path)
+        logger.info('reading secrets from %s', path)
+        with open(path) as f:
+            return json.load(f)
+
+    @property
     def rtm_token(self):
-        return self.read_token('rtm')
+        return self.data['rtm-token']
 
-    @functools.cached_property
+    @property
     def web_token(self):
-        return self.read_token('web')
+        return self.data['web-token']
 
 
 token_loader = TokenLoader()
