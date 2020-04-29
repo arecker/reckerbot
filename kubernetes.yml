@@ -56,7 +56,7 @@ spec:
           value: http://vault.local
         - name: VAULT_ROLE
           value: reckerbot
-        - name: SECRET_reckerbot
+        - name: SECRET_reckerbot.json
           value: /reckerbot
         - name: ONLY_RUN_ONCE
           value: "true"
