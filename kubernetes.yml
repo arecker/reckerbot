@@ -53,7 +53,7 @@ spec:
           mountPath: /secrets
       containers:
       - name: reckerbot
-        image: arecker/reckerbot:0.3.0-armv7l
+        image: arecker/reckerbot:0.4.0-armv7l
         imagePullPolicy: IfNotPresent
         env:
         - name: RTM_TOKEN_PATH:
