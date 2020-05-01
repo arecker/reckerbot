@@ -300,7 +300,13 @@ class GroceriesModule(Module):
 
     @property
     def save_target(self):
-        return os.path.join(here, 'data/groceries.json')
+        target = os.path.join(here, 'data/groceries.json')
+
+        if not os.path.exists(target):
+            with open(target, 'w') as f:
+                json.dump([], f)
+
+        return target
 
     def to_grocery_list(self, array):
         return ''.join(['- ' + item + '\n' for item in array])
