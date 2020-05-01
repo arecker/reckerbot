@@ -86,12 +86,8 @@ class TokenLoader:
             return json.load(f)
 
     @property
-    def rtm_token(self):
-        return self.data['rtm-token']
-
-    @property
-    def web_token(self):
-        return self.data['web-token']
+    def token(self):
+        return self.data['token']
 
 
 token_loader = TokenLoader()
@@ -100,7 +96,7 @@ token_loader = TokenLoader()
 class UserLookup:
     @functools.cached_property
     def client(self):
-        return slack.WebClient(token=token_loader.web_token)
+        return slack.WebClient(token=token_loader.token)
 
     @functools.cached_property
     def members(self):
@@ -137,7 +133,7 @@ class User:
 
     @functools.cached_property
     def client(self):
-        return slack.WebClient(token=token_loader.web_token)
+        return slack.WebClient(token=token_loader.token)
 
     @property
     def name(self):
@@ -186,7 +182,7 @@ class Message:
         return self.data.get('user') == 'USLACKBOT'
 
     def is_from_bot(self):
-        return self.subtype == 'bot_message'
+        return 'bot_id' in self.data
 
     def is_channel_join(self):
         return self.subtype == 'channel_join'
@@ -205,9 +201,16 @@ class Message:
 
     @property
     def post_args(self):
-        return {
-            'channel': self.channel,
+        args = {
+            'as_user': True,
         }
+
+        if self.channel.startswith('D'):
+            args['channel'] = self.data['user']
+        else:
+            args['channel'] = self.channel
+
+        return args
 
     @property
     def channel(self):
@@ -433,13 +436,13 @@ def serve():
     )
 
     logger.info('adding slack logging handler')
-    handler = SlackLogHandler(token=token_loader.web_token)
+    handler = SlackLogHandler(token=token_loader.token)
     handler.setLevel(logging.ERROR)
     handler.setFormatter(_log_formatter)
     logger.addHandler(handler)
 
     logger.info('opening RTM session')
-    client = slack.RTMClient(token=token_loader.rtm_token)
+    client = slack.RTMClient(token=token_loader.token)
     client.start()
 
 
