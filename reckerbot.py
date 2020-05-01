@@ -220,6 +220,10 @@ class Message:
         text = message.replace('{user}', self.user.as_mention())
         reckerbot.client.chat_postMessage(text=text, **self.post_args)
 
+    def sorry(self):
+        text = 'Ope!  Something broke while trying to respond.'
+        reckerbot.client.chat_postMessage(text=text, **self.post_args)
+
     def __repr__(self):
         return f'<Message "{self.truncate()}">'
 
@@ -427,6 +431,7 @@ def on_message(**payload):
         message.reply(module.handle(args, user=message.user))
     except Exception as e:
         logger.error(e, exc_info=True)
+        message.sorry()
 
 
 def serve():
