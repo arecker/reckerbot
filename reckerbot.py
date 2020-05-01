@@ -448,10 +448,6 @@ def serve():
 
     logger.info('opening RTM session')
     client = slack.RTMClient(token=token_loader.token)
-    reckerbot.client.chat_postMessage(
-        channel='#debug',
-        text=f'reckerbot v{__version__} is now listening!'
-    )
     client.start()
 
 
