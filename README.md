@@ -4,4 +4,4 @@
 
 The Greatest Slackbot Ever Made
 
-![test](https://github.com/arecker/reckerbot/workflows/test/badge.svg)
+![Master](https://github.com/arecker/reckerbot/workflows/Master/badge.svg)
