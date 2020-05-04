@@ -5,7 +5,8 @@ on:
     branches: master
 
 jobs:
-  test:
+
+  Merge:
     runs-on: ubuntu-latest
 
     strategy:
@@ -14,32 +15,24 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+
       - uses: actions/setup-python@v1
         with:
           python-version: ${{ matrix.python-version }}
+
       - run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+
       - run: |
           make test
 
-  publish:
-    runs-on: ubuntu-latest
-
-    steps:
-      -
-        name: Checkout
-        uses: actions/checkout@v2
-
-      -
-        name: Install Buildx
-        uses: crazy-max/ghaction-docker-buildx@v1
+      - uses: crazy-max/ghaction-docker-buildx@v1
         with:
           buildx-version: latest
           qemu-version: latest
-      -
-        name: Build
-        run: |
+
+      - run: |
           docker buildx build \
             --platform linux/386,linux/amd64,linux/arm/v6,linux/arm/v7,linux/arm64,linux/ppc64le,linux/s390x \
             --output "type=image,push=false" \
