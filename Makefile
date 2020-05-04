@@ -1,7 +1,7 @@
 .PHONY: build bump install run seed test
 
 build:
-	scripts/build.sh
+	scripts/buildx.sh
 
 bump:
 	bump2version minor
