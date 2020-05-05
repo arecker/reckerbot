@@ -187,6 +187,9 @@ class Message:
     def is_channel_join(self):
         return self.subtype == 'channel_join'
 
+    def is_edit(self):
+        return self.subtype == 'message_changed'
+
     def is_direct_message(self):
         return self.data['channel'].startswith('D')
 
@@ -194,10 +197,13 @@ class Message:
         return reckerbot.as_mention() in self.text
 
     def truncate(self, max=30):
-        if len(self.text) > max:
-            return self.text[:max] + '...'
-        else:
-            return self.text
+        try:
+            if len(self.text) > max:
+                return self.text[:max] + '...'
+            else:
+                return self.text
+        except KeyError:
+            return self.subtype
 
     @property
     def post_args(self):
@@ -414,6 +420,10 @@ def on_message(**payload):
     try:
         if message.is_channel_join():
             logger.info('message %s is just a channel join, ignoring', message)
+            return
+
+        if message.is_edit():
+            logger.info('message %s is just an edit, ignoring', message)
             return
 
         if message.is_from_bot() or message.is_from_slackbot():
