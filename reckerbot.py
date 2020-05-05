@@ -36,7 +36,10 @@ def parse_args(message):
     p_emoji = re.compile('^:[A-Za-z_-]+:$')
     words = [w for w in words if not p_username.match(w)]
     words = [w for w in words if not p_emoji.match(w)]
-    command = words.pop(0).lower()
+    try:
+        command = words.pop(0).lower()
+    except IndexError:
+        command = None
     try:
         subcommand = words.pop(0).lower()
     except IndexError:
@@ -266,6 +269,10 @@ class Module:
         subcmds.remove('help')
         return subcmds + ['help']
 
+    @property
+    def help_entry(self):
+        return f'{self.command} ({self.shortcut}) - {self.__doc__.strip()}'
+
     def _read_doc_string(self, method):
         return getattr(self, method).__doc__.strip()
 
@@ -273,11 +280,15 @@ class Module:
         '''
         Print these instructions.
         '''
+        entries = []
+
         for cmd in self.subcommands:
             doc = self._read_doc_string(f'cmd_{cmd}')
-            msg += f'\n{cmd} - {doc}'
+            entries.append(f'{cmd} - {doc}')
 
-        return msg.strip()
+        entries = '\n'.join(entries)
+
+        return f'{msg}\n{wrap_in_fences(entries)}'
 
     def subcommand_function(self, name):
         return getattr(self, f'cmd_{name}')
@@ -338,7 +349,7 @@ class GroceriesModule(Module):
 
     def cmd_add(self, args=[]):
         '''
-        Add `{args}` to the grocery list, if they're not already there.
+        Add items to the grocery list, if they're not already there.
         '''
         new = list(set([i.lower().strip() for i in args]))
         with open(self.save_target, 'r') as f:
@@ -357,7 +368,7 @@ class GroceriesModule(Module):
 
     def cmd_delete(self, args=[]):
         '''
-        Delete `{args}` from the grocery list, if they're listed.
+        Delete items from the grocery list, if they're listed.
         '''
         with open(self.save_target, 'r') as f:
             items = json.load(f)
@@ -378,34 +389,33 @@ class GroceriesModule(Module):
         return 'grocery list cleared!'
 
 
-class DefaultModule(Module):
+class HelpModule(Module):
     '''
-    Garner some mild shame from reckerbot for typing a nonexistent command.
+    Print all available module commands
     '''
-    default = 'random'
-
-    replies = [
-        '''Hey {user}!  I saw you mentioned me, but I'm not sure what I'm supposed to do? :thinking_face:''',
-        '''{user} - you rang?''',
-        '''And what I'm I supposed to do now, {user}?''',
-        '''Hi {user}.  I don't know what you want, so I'll just assume you want attention.''',
-        '''{user}? ¯\_(ツ)_/¯''',
-        '''What can I do for you, {user}?''',
-    ]
-
-    def matches(self, cmd):
+    def matches(self, *args, **kwargs):
         return True
 
-    def cmd_random(self, args=[]):
-        '''
-        Hear a random phrase which communicates how lost you are.
-        '''
-        return random.choice(self.replies)
+    def cmd_help(self, args=[], msg='Here are all of my available modules:'):
+        entries = wrap_in_fences('\n'.join([m.help_entry for m in modules]))
+        return f'{msg}\n{entries}'
+
+    def handle(self, args, **kwargs):
+        if not args.command:
+            return self.cmd_help()
+
+        if not any([args.command in m.matching_commands for m in modules]):
+            msg = f'Not sure what "{args.command}" means, ' + '''
+            but here are all my available modules:
+            '''.strip()
+            return self.cmd_help(msg=msg)
+
+        return super(HelpModule, self).handle(args, **kwargs)
 
 
 modules = [
     GroceriesModule(),
-    DefaultModule(),
+    HelpModule(),
 ]
 
 

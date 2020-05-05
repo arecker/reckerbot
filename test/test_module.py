@@ -5,7 +5,7 @@ from reckerbot import Module
 
 class HelloModule(Module):
     '''
-    Use the hello module to receive a warm greeting.
+    receive warm greetings from a computer.
     '''
     aliases = ['hi']
 
@@ -35,11 +35,17 @@ class TestModule(unittest.TestCase):
     def test_default(self):
         self.assertEqual(self.m.default, 'help')
 
+    def test_help_entry(self):
+        expected = 'hello (h) - receive warm greetings from a computer.'
+        self.assertEqual(self.m.help_entry, expected)
+
     def test_cmd_help(self):
         expected = '''
 Here are the available commands:
+```
 greet - Reply to `{name}` with a nice greeting.
 help - Print these instructions.
+```
         '''.strip()
         self.assertEqual(self.m.cmd_help(), expected)
 
