@@ -429,8 +429,8 @@ def on_message(**payload):
         module = find_module(args)
         logger.info('routing %s to %s', args, module)
         message.reply(module.handle(args, user=message.user))
-    except Exception as e:
-        logger.error(e, exc_info=True)
+    except Exception:
+        logger.error(payload['data'], exc_info=True)
         message.sorry()
 
 
