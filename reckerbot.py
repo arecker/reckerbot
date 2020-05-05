@@ -36,9 +36,9 @@ def parse_args(message):
     p_emoji = re.compile('^:[A-Za-z_-]+:$')
     words = [w for w in words if not p_username.match(w)]
     words = [w for w in words if not p_emoji.match(w)]
-    command = words.pop(0)
+    command = words.pop(0).lower()
     try:
-        subcommand = words.pop(0)
+        subcommand = words.pop(0).lower()
     except IndexError:
         subcommand = None
     args = [w.strip() for w in ' '.join(words).split(',') if w]

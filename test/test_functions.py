@@ -20,6 +20,10 @@ class TestFunctions(unittest.TestCase):
         self.assertEqual(actual.subcommand, 'greet')
         self.assertEqual(actual.args, ['Alex'])
 
+        actual = parse_args('G List')
+        self.assertEqual(actual.command, 'g')
+        self.assertEqual(actual.subcommand, 'list')
+
 
 if __name__ == '__main__':
     unittest.main()
