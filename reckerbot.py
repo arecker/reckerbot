@@ -4,6 +4,7 @@ reckerbot, the greatest slackbot ever made
 
 __version__ = '0.13.0'
 
+import asyncio
 import collections
 import functools
 import json
@@ -11,9 +12,10 @@ import logging
 import os
 import platform
 import re
+import ssl
 import sys
-import traceback
 
+import certifi
 import slack
 
 here = os.path.dirname(os.path.realpath(__file__))
@@ -47,25 +49,6 @@ def parse_args(message):
     return ParsedArgs(command, subcommand, args)
 
 
-class SlackLogHandler(logging.Handler):
-    def __init__(self, *args, token='', **kwargs):
-        self.token = token
-        super(SlackLogHandler, self).__init__(*args, **kwargs)
-
-    @functools.cached_property
-    def client(self):
-        return slack.WebClient(token=self.token)
-
-    def emit(self, record):
-        if record.exc_info:
-            stacktrace = wrap_in_fences(traceback.format_exc().strip())
-            text = f'{stacktrace}'
-        else:
-            text = record.getMessage()
-
-        self.client.chat_postMessage(channel='#debug', text=text)
-
-
 # logger
 logger = logging.getLogger('reckerbot')
 _log_handler = logging.StreamHandler(stream=sys.stdout)
@@ -95,90 +78,39 @@ class TokenLoader:
 token_loader = TokenLoader()
 
 
-class UserLookup:
-    @functools.cached_property
-    def client(self):
-        return slack.WebClient(token=token_loader.token)
+class UserLookup(collections.UserDict):
+    def __init__(self):
+        self.data = {}
 
-    @functools.cached_property
-    def members(self):
+    async def populate(self, client):
+        if self.data:
+            return
+
         logger.info('fetching member info')
-        return self.client.users_list().data['members']
+        response = await client.users_list()
+        for user in response.data['members']:
+            if user['deleted']:
+                continue
 
-    @property
-    def active_members(self):
-        yield from filter(lambda m: not m['deleted'], self.members)
-
-    def active_with_name(self, name):
-        yield from filter(lambda m: m['name'] == name, self.active_members)
-
-    def active_with_id(self, id):
-        yield from filter(lambda m: m['id'] == id, self.active_members)
-
-    def id_by_name(self, name):
-        try:
-            member = next((m for m in self.active_with_name(name)))
-            return member['id']
-        except StopIteration:
-            raise ValueError(f'no user with name "{name}"')
-
-    def name_by_id(self, id):
-        try:
-            member = next((m for m in self.active_with_id(id)))
-            return member['name']
-        except StopIteration:
-            raise ValueError(f'no user with id "{id}"')
+            self.data[user['name']] = user['id']
 
 
 user_lookup = UserLookup()
 
 
-class User:
-    def __init__(self, name=None, id=None):
-        self._id = id
-        self._name = name
-
-    def as_mention(self):
-        return f'<@{self.id}>'
-
-    @functools.cached_property
-    def client(self):
-        return slack.WebClient(token=token_loader.token)
-
-    @property
-    def name(self):
-        if not self._name:
-            self._name = user_lookup.name_by_id(self._id)
-        return self._name
-
-    @property
-    def id(self):
-        if not self._id:
-            self._id = user_lookup.id_by_name(self._name)
-        return self._id
-
-    def __eq__(self, other):
-        return self.id == other.id
-
-    def __repr__(self):
-        return f'<User {self.name}>'
-
-
-reckerbot = User(name='reckerbot')
-
-
 class Message:
     # https://api.slack.com/events/message
 
-    def __init__(self, data):
+    def __init__(self, data, client=None):
         self.data = data
+        self.client = client
 
     @functools.cached_property
     def user(self):
         try:
-            return User(id=self.data['user'])
+            return self.data['user']
         except KeyError:
-            return User(id=self.data['bot_id'])
+            return self.data['bot_id']
 
     @property
     def text(self):
@@ -204,7 +136,8 @@ class Message:
         return self.data['channel'].startswith('D')
 
     def mentions_reckerbot(self):
-        return reckerbot.as_mention() in self.text
+        reckerbot_id = user_lookup['reckerbot']
+        return f'<@{reckerbot_id}>' in self.text
 
     def truncate(self, max=30):
         try:
@@ -232,13 +165,12 @@ class Message:
     def channel(self):
         return self.data['channel']
 
-    def reply(self, message):
-        text = message.replace('{user}', self.user.as_mention())
-        reckerbot.client.chat_postMessage(text=text, **self.post_args)
+    def reply(self, text):
+        self.client.chat_postMessage(text=text, **self.post_args)
 
     def sorry(self):
         text = 'Ope!  Something broke while trying to respond.'
-        reckerbot.client.chat_postMessage(text=text, **self.post_args)
+        self.client.chat_postMessage(text=text, **self.post_args)
 
     def __repr__(self):
         return f'<Message "{self.truncate()}">'
@@ -253,7 +185,7 @@ class Module:
 
     @functools.cached_property
     def allowed_users(self):
-        return [User(name=u) for u in self.allowed_user_names]
+        return [user_lookup[u] for u in self.allowed_user_names]
 
     @property
     def command(self):
@@ -433,8 +365,10 @@ def find_module(args):
 
 
 @slack.RTMClient.run_on(event='message')
-def on_message(**payload):
-    message = Message(data=payload['data'])
+async def on_message(web_client=None, data={}, **kwargs):
+    await user_lookup.populate(web_client)
+
+    message = Message(data=data, client=web_client)
 
     try:
         if message.is_channel_join():
@@ -459,35 +393,27 @@ def on_message(**payload):
         logger.info('routing %s to %s', args, module)
         message.reply(module.handle(args, user=message.user))
     except Exception:
-        logger.error(payload['data'], exc_info=True)
+        logger.error(data, exc_info=True)
         message.sorry()
 
 
-def serve():
+def main():
     logger.info(
         'starting reckerbot v%s, Python %s',
         __version__, platform.python_version()
     )
-
-    logger.info('adding slack logging handler')
-    handler = SlackLogHandler(token=token_loader.token)
-    handler.setLevel(logging.ERROR)
-    handler.setFormatter(_log_formatter)
-    logger.addHandler(handler)
-
+    ssl_context = ssl.create_default_context(cafile=certifi.where())
+    slack_token = token_loader.token
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    rtm_client = slack.RTMClient(
+        token=slack_token,
+        ssl=ssl_context,
+        run_async=True,
+        loop=loop
+    )
     logger.info('opening RTM session')
-    client = slack.RTMClient(token=token_loader.token)
-    client.start()
-
-
-def main():
-    args = parse_args(' '.join(sys.argv[1:]))
-
-    if args.command == 'serve':
-        serve()
-    else:
-        module = find_module(args)
-        print(module.handle(args))
+    loop.run_until_complete(rtm_client.start())
 
 
 if __name__ == '__main__':
