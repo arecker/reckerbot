@@ -65,7 +65,7 @@ spec:
           mountPath: /secrets
       containers:
       - name: reckerbot
-        image: arecker/reckerbot:0.13.0
+        image: arecker/reckerbot:0.14.0
         imagePullPolicy: IfNotPresent
         volumeMounts:
         - name: data
