@@ -10,7 +10,6 @@ import json
 import logging
 import os
 import platform
-import random
 import re
 import sys
 import traceback
@@ -110,15 +109,23 @@ class UserLookup:
     def active_members(self):
         yield from filter(lambda m: not m['deleted'], self.members)
 
+    def active_with_name(self, name):
+        yield from filter(lambda m: m['name'] == name, self.active_members)
+
+    def active_with_id(self, id):
+        yield from filter(lambda m: m['id'] == id, self.active_members)
+
     def id_by_name(self, name):
         try:
-            return next((m['id'] for m in self.active_members if m['name'] == name))
+            member = next((m for m in self.active_with_name(name)))
+            return member['id']
         except StopIteration:
             raise ValueError(f'no user with name "{name}"')
 
     def name_by_id(self, id):
         try:
-            return next((m['name'] for m in self.active_members if m['id'] == id))
+            member = next((m for m in self.active_with_id(id)))
+            return member['name']
         except StopIteration:
             raise ValueError(f'no user with id "{id}"')
 
@@ -304,7 +311,9 @@ class Module:
 
     def handle(self, args, user=None):
         if user and not self.is_allowed(user):
-            return f'I am sorry!  You are not allowed to run the "{self.command}" commmand!'
+            return f'''
+I am sorry!  You are not allowed to run the "{self.command}" commmand!
+            '''.strip()
 
         subcommand = args.subcommand or self.default
 

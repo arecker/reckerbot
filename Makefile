@@ -1,4 +1,4 @@
-.PHONY: build bump install run seed test
+.PHONY: build bump install install-test-deps lint seed test
 
 build:
 	scripts/buildx.sh
@@ -8,6 +8,12 @@ bump:
 
 install:
 	kubectl apply -f kubernetes.yml
+
+install-test-deps:
+	pip install -r requirements/test.txt
+
+lint:
+	flake8
 
 seed:
 	scripts/seed.sh
