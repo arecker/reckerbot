@@ -3,36 +3,25 @@ name: Master
 on:
   push:
     branches: master
-    tags:
-    - 'v*'
 
 jobs:
-
   Merge:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v2
-
       - uses: actions/setup-python@v1
         with:
           python-version: 3.8
-
       - run: make install-test-deps
-
       - run: make lint
-
       - run: make test
-
       - env:
           DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
           DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
         run: |
           echo "${DOCKER_PASSWORD}" | docker login --username "${DOCKER_USERNAME}" --password-stdin
-
       - uses: crazy-max/ghaction-docker-buildx@v1
         with:
           buildx-version: latest
           qemu-version: latest
-
       - run: make build

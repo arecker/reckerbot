@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-VERSION="$(cat VERSION)"
+VERSION="$(git describe)"
 IMAGE_NAME="arecker/reckerbot"
 PLATFORMS="linux/386,linux/amd64,linux/arm/v6,linux/arm/v7,linux/arm64"
 
