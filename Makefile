@@ -1,7 +1,7 @@
 .PHONY: build bump install install-test-deps lint seed test
 
 build:
-	scripts/buildx.sh
+	scripts/build.sh
 
 bump:
 	bump2version minor
