@@ -1,10 +1,16 @@
-.PHONY: build bump install install-test-deps lint seed test
+.PHONY: build bump-major bump-minor bump-patch install install-test-deps lint seed test
 
 build:
 	scripts/build.sh
 
-bump:
+bump-major:
+	bump2version major
+
+bump-minor:
 	bump2version minor
+
+bump-patch:
+	bump2version patch
 
 install:
 	kubectl apply -f kubernetes.yml
