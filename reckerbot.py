@@ -2,7 +2,7 @@
 reckerbot, the greatest slackbot ever made
 '''
 
-__version__ = '0.15.1'
+__version__ = '0.16.0'
 
 import asyncio
 import collections
