@@ -3,8 +3,7 @@
 set -e
 
 VERSION="$(git describe)"
-PI_PLATFORM="linux/arm/v6"
-OTHER_PLATFORMS="linux/386,linux/amd64,linux/arm/v7,linux/arm64"
+PLATFORMS="linux/386,linux/amd64,linux/arm/v6,linux/arm/v7,linux/arm64"
 IMAGE_NAME="arecker/reckerbot"
 
 log() {
@@ -32,8 +31,5 @@ else
     exit 0
 fi
 
-log "building pi image $PI_PLATFORM"
-docker_build "$PI_PLATFORM"
-
-log "building other platforms"
-docker_build "$OTHER_PLATFORMS"
+log "building $IMAGE_NAME"
+docker_build "$PLATFORMS"
