@@ -13,7 +13,9 @@ bump-patch:
 	bump2version patch
 
 install:
-	kubectl apply -f kubernetes.yml
+	kubectl apply -f deploy/namespace.yml
+	kubectl apply -f deploy/deployment.yml
+	kubectl apply -f deploy/manifestor.yml
 
 install-test-deps:
 	pip install -r requirements/test.txt
