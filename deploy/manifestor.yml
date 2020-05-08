@@ -35,6 +35,7 @@ metadata:
   namespace: reckerbot
 spec:
   schedule: "*/5 * * * *"
+  successfulJobsHistoryLimit: 1
   jobTemplate:
     spec:
       template:
