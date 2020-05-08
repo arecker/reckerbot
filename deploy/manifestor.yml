@@ -37,6 +37,7 @@ metadata:
   namespace: reckerbot
 spec:
   schedule: "* * * * *"
+  ttlSecondsAfterFinished: 30
   jobTemplate:
     spec:
       template:
