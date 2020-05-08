@@ -37,14 +37,14 @@ metadata:
   namespace: reckerbot
 spec:
   schedule: "* * * * *"
-  ttlSecondsAfterFinished: 30
   jobTemplate:
     spec:
       template:
-        serviceAccountName: manifestor
-        containers:
-        - name: manifestor
-          image: arecker/manifestor:latest
-          env:
-          - name: MANIFEST_URL
-            value: https://raw.githubusercontent.com/arecker/reckerbot/master/deploy/deployment.yml
+        spec:
+          serviceAccountName: manifestor
+          containers:
+          - name: manifestor
+            image: arecker/manifestor:latest
+            env:
+            - name: MANIFEST_URL
+              value: https://raw.githubusercontent.com/arecker/reckerbot/master/deploy/deployment.yml
