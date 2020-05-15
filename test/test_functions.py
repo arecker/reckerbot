@@ -1,6 +1,6 @@
 import unittest
 
-from reckerbot import wrap_in_fences, parse_args
+from reckerbot import wrap_in_fences, parse_args, order_by_list
 
 
 class TestFunctions(unittest.TestCase):
@@ -23,6 +23,14 @@ class TestFunctions(unittest.TestCase):
         actual = parse_args('G List')
         self.assertEqual(actual.command, 'g')
         self.assertEqual(actual.subcommand, 'list')
+
+    def test_order_by_list(self):
+        expected = ['a', 'd', 'e', 'b']
+        actual = order_by_list(
+            ['b', 'a', 'd', 'e'],
+            ['a', 'c', 'd', 'e']
+        )
+        self.assertEqual(actual, expected)
 
 
 if __name__ == '__main__':

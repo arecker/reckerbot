@@ -49,6 +49,14 @@ def parse_args(message):
     return ParsedArgs(command, subcommand, args)
 
 
+def order_by_list(x, k):
+    '''
+    order items in x according to the key in k
+    items not in k are appended to the end
+    '''
+    return [i for i in k if i in x] + [i for i in x if i not in k]
+
+
 # logger
 logger = logging.getLogger('reckerbot')
 _log_handler = logging.StreamHandler(stream=sys.stdout)
@@ -262,6 +270,42 @@ class GroceriesModule(Module):
     '''
     default = 'list'
     allowed_user_names = ['alex', 'marissa']  # TODO: lol hard code
+
+    hyvee_ordering = [
+
+        # produce
+        'oranges', 'apples', 'lemons', 'strawberries',
+
+        # vegetables
+        'parsley', 'cilantro', 'turnips', 'carrots', 'asparagus',
+        'bell peppers', 'red bell peppers', 'green bell peppers',
+        'yellow bell peppers', 'organge bell peppers', 'jalapenos',
+
+        # herbs
+        'rosemary', 'thyme', 'basil',
+
+        # ethnic
+        'san marzanos', 'pasta',
+
+        # bakery
+        'blueberry muffins', 'muffins', 'brood',
+
+        # fancy cheese
+        'pecorino', 'fresh mozzarella', 'ricotta',
+
+        # canned vegetables
+
+        # dairy
+        'sour cream', 'milk', 'whole milk', '2% milk',
+        'buttermilk', 'eggnog', 'cream', 'heavy whipping cream',
+
+        # frozen
+        'butter', 'ice cream', 'puff pastry'
+
+        # liquor
+        'amstel light', 'amstel', 'biertje', 'beer',
+        'fantasy factory', 'tequila', 'gin', 'bombay gin',
+    ]
 
     @property
     def save_target(self):

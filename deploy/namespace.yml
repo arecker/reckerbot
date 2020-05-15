@@ -5,17 +5,3 @@ metadata:
   name: reckerbot
   labels:
     name: reckerbot
----
-apiVersion: rbac.authorization.k8s.io/v1beta1
-kind: ClusterRoleBinding
-metadata:
-  name: role-tokenreview-binding
-  namespace: reckerbot
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: "system:auth-delegator"
-subjects:
-- name: default
-  namespace: reckerbot
-  kind: ServiceAccount
